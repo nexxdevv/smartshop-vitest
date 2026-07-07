@@ -1,153 +1,130 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useShop } from "@/context/ShopContext";
-import { fetchUserProfile } from "@/app/actions/auth";
+import { authClient } from "@/lib/auth-client";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, login } = useShop();
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
-  // Extract email safely to prevent referencing the whole object
-  const userEmail = user?.email;
+  // 1. Hook into Better-Auth's live reactive session state
+  const { data: session, isPending } = authClient.useSession();
 
-  useEffect(() => {
-    if (!userEmail && !loading) {
-      router.push("/auth");
-      return;
-    }
-
-    async function syncProfile() {
-      try {
-        const email = userEmail;
-        if (!email) return;
-
-        const data = await fetchUserProfile(email);
-        if (data) {
-          setProfile(data);
-          login(data); // Now safe to update because userEmail stays the same!
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    syncProfile();
-    // Only re-run if the specific user email changes, or if the router updates
-  }, [userEmail, router]);
-
-  if (loading) {
+  // 2. Handle the loading state while checking tokens
+  if (isPending) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center text-sm font-medium text-gray-500">
-        Loading profile matrix...
-      </div>
+      <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-gray-50/50">
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent mx-auto"></div>
+          <p className="mt-4 text-sm font-medium text-gray-500">
+            Verifying session context...
+          </p>
+        </div>
+      </main>
     );
   }
 
-  const orders = profile?.orderHistory || [];
+  // 3. Kick unauthenticated users back to your login portal
+  if (!session) {
+    router.replace("/auth");
+    return null;
+  }
+
+  const { user } = session;
+
+  const handleSignOut = async () => {
+    await authClient.signOut();
+    router.push("/auth");
+  };
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-      {/* ... keeping the rest of your JSX exactly the same ... */}
-      <div className="border-b border-gray-200 pb-6">
-        <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">
-          Account Dashboard
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Manage your delivery details and monitor past electronic acquisitions.
-        </p>
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-xs">
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
-            Buyer Identity
-          </span>
-          <h2 className="mt-1 text-lg font-bold text-gray-900">
-            {profile?.name}
-          </h2>
-          <p className="text-sm text-gray-500">{profile?.email}</p>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-xs">
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
-            Default Shipping Point
-          </span>
-          <p className="mt-1 text-sm text-gray-700">
-            {profile?.address
-              ? profile.address
-              : "No address saved yet. Complete a checkout to store one."}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <h2 className="text-xl font-bold tracking-tight text-gray-900 mb-4">
-          Order History ({orders.length})
-        </h2>
-
-        {orders.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-gray-200 p-8 text-center text-sm text-gray-400">
-            You haven&apos;t placed any orders yet.
+    <main className="min-h-[calc(100vh-4rem)] bg-gray-50/50 p-4 sm:p-8">
+      <div className="mx-auto max-w-4xl">
+        {/* Header Unit */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+              Account Dashboard
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Manage your verified smartshop application states and history.
+            </p>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {orders.map((order: any, idx: number) => (
-              <div
-                key={order._id || idx}
-                className="rounded-xl border border-gray-200 bg-white p-4 shadow-xs"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400">
-                      ORDER ID:{" "}
-                      <span className="text-gray-700">
-                        #
-                        {String(order._id || idx)
-                          .slice(-8)
-                          .toUpperCase()}
-                      </span>
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      Placed on:{" "}
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <span className="rounded-lg bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700">
-                    Total Paid: ${order.totalCost}
-                  </span>
-                </div>
+          <button
+            onClick={handleSignOut}
+            className="self-start rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 active:scale-98 transition-all"
+          >
+            Sign Out
+          </button>
+        </div>
 
-                <ul className="mt-3 divide-y divide-gray-50">
-                  {order.items.map((item: any, itemIdx: number) => (
-                    <li
-                      key={itemIdx}
-                      className="flex items-center justify-between py-2 text-sm"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">{item.emoji}</span>
-                        <span className="font-medium text-gray-900">
-                          {item.name}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          x{item.quantity}
-                        </span>
-                      </div>
-                      <span className="font-semibold text-gray-700">
-                        ${item.price * item.quantity}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+        {/* Profile Card Layout */}
+        <div className="mt-8 grid gap-6 md:grid-cols-3">
+          <div className="md:col-span-1 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col items-center text-center">
+            {user.image ? (
+              <img
+                src={user.image}
+                alt={user.name}
+                className="h-20 w-20 rounded-full border border-gray-100 object-cover shadow-sm"
+              />
+            ) : (
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-indigo-50 text-2xl font-bold text-indigo-600">
+                {user.name ? user.name.charAt(0).toUpperCase() : "U"}
               </div>
-            ))}
+            )}
+            <h2 className="mt-4 font-bold text-gray-900 text-lg">
+              {user.name}
+            </h2>
+            <p className="text-xs font-medium text-gray-400 mt-0.5">
+              {user.email}
+            </p>
+
+            <div className="mt-4 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-100">
+              ✓ Verified Session
+            </div>
           </div>
-        )}
+
+          {/* Metadata Block */}
+          <div className="md:col-span-2 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 className="font-bold text-gray-900 border-b border-gray-100 pb-3">
+              Identity Breakdown
+            </h3>
+            <dl className="mt-4 space-y-4 text-sm">
+              <div className="flex justify-between border-b border-gray-50 pb-2">
+                <dt className="font-medium text-gray-400">
+                  Internal Reference ID
+                </dt>
+                <dd className="font-mono text-xs text-gray-600 bg-gray-50 px-2 py-0.5 rounded">
+                  {user.id}
+                </dd>
+              </div>
+              <div className="flex justify-between border-b border-gray-50 pb-2">
+                <dt className="font-medium text-gray-400">Account Username</dt>
+                <dd className="font-semibold text-gray-800">{user.name}</dd>
+              </div>
+              <div className="flex justify-between border-b border-gray-50 pb-2">
+                <dt className="font-medium text-gray-400">
+                  Primary Contact Address
+                </dt>
+                <dd className="font-semibold text-gray-800">{user.email}</dd>
+              </div>
+              <div className="flex justify-between pt-1">
+                <dt className="font-medium text-gray-400">
+                  Registration Timestamp
+                </dt>
+                <dd className="font-medium text-gray-600">
+                  {new Date(user.createdAt || Date.now()).toLocaleDateString(
+                    undefined,
+                    {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    },
+                  )}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
       </div>
     </main>
   );
