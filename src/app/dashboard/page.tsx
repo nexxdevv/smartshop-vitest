@@ -22,7 +22,10 @@ export default function DashboardPage() {
 
     async function syncProfile() {
       try {
-        const data = await fetchUserProfile(userEmail);
+        const email = userEmail;
+        if (!email) return;
+
+        const data = await fetchUserProfile(email);
         if (data) {
           setProfile(data);
           login(data); // Now safe to update because userEmail stays the same!
