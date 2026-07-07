@@ -36,6 +36,28 @@ export const ShopProvider = ({ children }: { children: React.ReactNode }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [user, setUser] = useState<UserSession | null>(null);
 
+  // 1. Hydrate the state from localStorage on initial mount
+  useEffect(() => {
+    const savedCart = localStorage.getItem('smartshop_cart');
+    const savedUser = localStorage.getItem('smartshop_user');
+
+    if (savedCart) setCart(JSON.parse(savedCart));
+    if (savedUser) setUser(JSON.parse(savedUser));
+  }, []);
+
+  // 2. Automatically sync state back to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('smartshop_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('smartshop_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('smartshop_user');
+    }
+  }, [user]);
+
   // Sync state cleanly for client interactions
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
   const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
