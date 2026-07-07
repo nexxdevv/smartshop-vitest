@@ -31,10 +31,7 @@ export default function DashboardPage() {
 
   const { user } = session;
 
-  const handleSignOut = async () => {
-    await authClient.signOut();
-    router.push("/auth");
-  };
+
 
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-gray-50/50 p-4 sm:p-8">
@@ -43,18 +40,12 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-6">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-              Account Dashboard
+              Account
             </h1>
             <p className="mt-1 text-sm text-gray-500">
               Manage your verified smartshop application states and history.
             </p>
           </div>
-          <button
-            onClick={handleSignOut}
-            className="self-start rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 active:scale-98 transition-all"
-          >
-            Sign Out
-          </button>
         </div>
 
         {/* Profile Card Layout */}
